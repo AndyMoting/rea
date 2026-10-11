@@ -1,0 +1,58 @@
+name: Sync with upstream
+
+# Keeps this fork (AndyMoting/rea) up to date with morluto/rea.
+# - main: merged forward, so this workflow file itself is preserved
+# - all other upstream branches + all tags: force-mirrored
+# Runs daily (UTC); can also be run manually from the Actions tab.
+
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-upstream
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.SYNC_TOKEN }}
+
+      - name: Merge upstream/main (keeps this workflow file)
+        run: |
+          set -euo pipefail
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote add upstream https://github.com/morluto/rea.git
+          git fetch upstream --tags --prune
+          git checkout main
+          if git merge-base --is-ancestor upstream/main HEAD; then
+            echo "main is already up to date with upstream"
+          else
+            git merge --no-edit upstream/main
+            git push origin main
+          fi
+
+      - name: Mirror tags
+        run: git push --force origin --tags
+
+      - name: Mirror other upstream branches
+        run: |
+          set -euo pipefail
+          git fetch upstream "+refs/heads/*:refs/remotes/upstream/*" --prune
+          for ref in $(git for-each-ref --format='%(refname:short)' refs/remotes/upstream); do
+            branch="${ref#upstream/}"
+            if [ "$branch" = "main" ]; then
+              continue
+            fi
+            git push --force origin "refs/remotes/upstream/${branch}:refs/heads/${branch}"
+          done
