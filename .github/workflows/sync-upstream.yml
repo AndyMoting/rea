@@ -6,6 +6,8 @@ name: Sync with upstream
 # Runs daily (UTC); can also be run manually from the Actions tab.
 
 on:
+  push:
+    branches: [main]
   schedule:
     - cron: "*/5 * * * *"
   workflow_dispatch:
