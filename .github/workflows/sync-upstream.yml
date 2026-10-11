@@ -49,10 +49,13 @@ jobs:
         run: |
           set -euo pipefail
           git fetch upstream "+refs/heads/*:refs/remotes/upstream/*" --prune
-          for ref in $(git for-each-ref --format='%(refname:short)' refs/remotes/upstream); do
-            branch="${ref#upstream/}"
+          for ref in $(git for-each-ref --format='%(refname)' refs/remotes/upstream); do
+            case "$ref" in
+              */HEAD) continue ;;
+            esac
+            branch="${ref#refs/remotes/upstream/}"
             if [ "$branch" = "main" ]; then
               continue
             fi
-            git push --force origin "refs/remotes/upstream/${branch}:refs/heads/${branch}"
+            git push --force origin "${ref}:refs/heads/${branch}"
           done
